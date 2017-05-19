@@ -1,6 +1,8 @@
+import Exporter from './exporter/exporter';
 import getApp from './app';
 import getLogger from './util/logger';
 import getMiradorProxyManager from './mirador-proxy/mirador-proxy-manager';
+import JsonToHtml from './exporter/json-to-html';
 import LayoutConfigParser from './layout/layout-config-parser';
 import MiradorConfigBuilder from './config/mirador-config-builder';
 import {openAnnotationSelector} from './util/annotation-explorer';
@@ -113,6 +115,21 @@ export default class MiradorWrapper {
         miradorId: this._miradorId,
         imageWindowId: canvasWindowId
       });
+    });
+
+    miradorProxy.subscribe('YM_CLICKED_EXPORT', async function(event, canvasWindowId) {
+      logger.debug('MiradorWrapper received YM_EXPORT from ', canvasWindowId);
+      const windowProxy = miradorProxy.getWindowProxyById(canvasWindowId);
+      const annotationExplorer = getApp().getAnnotationExplorer();
+      const exporter = new Exporter({
+        manifest: windowProxy.getManifest(),
+        annotationExplorer: annotationExplorer
+      });
+      const jsonObj = await exporter.export();
+      const html = new JsonToHtml(jsonObj).run();
+      logger.debug('Export:', jsonObj, html);
+      const reportWindow = window.open('data:text/html,<html><body><h1>hello</h1></body></html>');
+      reportWindow.document.write(html);
     });
 
     jQuery.subscribe('YM_READY_TO_RELOAD_ANNO_WIN', (event, imageWindowId) => { // after annotations have been loaded
